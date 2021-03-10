@@ -1,12 +1,13 @@
-;;; dorkzilla.el --- A Emacs drum machine with elements of a old roland a friend of mine had years ago,
-;;; and some teenage engineering inspiration.
+;;; dorkzilla.el --- A Emacs drum machine with elements of a old roland (R-8?)
+;;; and some teenage engineering inspiration for weirdness.
 
 ;;; Commentary:
 ;;
 
 ;;; Code:
 
-;;; OSX has no sound support. It would have blocked anyway
+;;; Emacs on OSX has no sound support. It would have blocked while playing anyway.
+;;;
 ;;; Got this from
 ;;; https://github.com/killdash9/.emacs.d/blob/master/site-lisp/play-sound.e
 ;;; Not really production ready, as it starts a process everytime, but it's a start
@@ -44,31 +45,20 @@
 
 ;; Il testo deve essere il data model, o li faccio distinti?
 ;; Se li faccio distinti.. e' una seq (NVoices) di arrays|string di..
-(setq bd "9...1...9...1.4.")
-(setq oh "5   5   5   5   ")
+(setq bdpattern "9...1...9...1.4.")
+(setq ohpattern "5   5   5   5   ")
 
 ;; Elemento stringa si setta con aset; E ?6 e' "6"
-(aset bd 0 ?6)
+(aset bdpattern 0 ?6)
 
+;; E si accede fra l'altro con aref se array
+(aref bdpattern 0)
+;; O elt in quanto sequence
+(elt bdpattern 0)
+
+;; The samples
 (setq bdsample "/Users/loop/toykeyboards-master/Keys (PSR)/individual drums/PSR_Bassdrum_low.wav")
 (setq ohsample "/Users/loop/toykeyboards-master/Keys (PSR)/individual drums/PSR_Highhat_pedal.wav")
-
-;; Ha senso usare i record per definire una voce? boh. Si potrebbero mettere il nome, come (dove) suonarla e la stringa.
-(setq bdsound `(sound :file bdsample))
-(setq ohsound `(sound :file ohsample))
-(setq bdvoice (record 'voice "Bass Drum" bdsound bd)
-(setq ohvoice (record 'voice "Open Hat" ohsound oh)
-
-(defun playvoice (voice idx)
-  "Play voice step at index"
-  (let ((cur-step (aref voice idx)))
-    (if (note-p cur-step)
-        (progn
-          (message (format "playing a %c" cur-step))
-          (play-sound (list 'sound :file bdsample :volume (format "%c" cur-step))))
-      (message "not playing"))))
-
-(playvoice bd 0)
 
 (play-sound `(sound :file "/Users/loop/toykeyboards-master/Keys (PSR)/individual drums/PSR_Bassdrum_low.wav" :volume "1"))
 
@@ -77,6 +67,49 @@
 
 ;;; This does!
 (play-sound (list 'sound :file bdsample :volume "1"))
+
+;; So define bd and oh sounds
+(setq bdsound (list 'sound :file bdsample))
+(setq ohsound (list 'sound :file ohsample))
+
+(play-sound ohsound)
+
+;; Proviamo a usare i record per definire una voce; Una voice ha il nome, il sound e il pattern.
+(setq bdvoice (record 'voice "Bass Drum" bdsound bdpattern))
+(setq ohvoice (record 'voice "Open Hat" ohsound ohpattern))
+
+;; Access elements of voice records
+(defun pattern (voice)
+  (aref voice 3))
+(defun sound (voice)
+  (aref voice 2))
+(defun name(voice)
+  (aref voice 1))
+
+(pattern ohvoice)
+(sound ohvoice)
+(name ohvoice)
+
+(defun playvoice (voice idx)
+  "Play voice step at index"
+  (let ((cur-step (aref (pattern voice) idx)))
+    (if (note-p cur-step)
+        (progn
+          (message (format "playing a %c" cur-step))
+          (play-sound (append (sound voice) '(:volume (format "%c" cur-step)))))
+      (message "not playing"))))
+
+(playvoice bdvoice 0)
+
+(defun playvoices (voices idx)
+  "Play n voices at step at the same time"
+  (seq-map (lambda (voice)
+             (playvoice voice idx)) voices))
+
+
+(playvoice bdvoice 0)
+
+(playvoices [bd oh])
 
 (defun play-track (track)
   "Plays a track from start to finish, once"
